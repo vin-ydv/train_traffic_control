@@ -1,0 +1,42 @@
+{
+  "scenarios": [
+    {
+      "id": "normal",
+      "name": "Normal Day",
+      "description": "All trains run on schedule. Conflicts arise naturally on the single-line blocks (PWL-KSV and KSV-MTJ).",
+      "events": []
+    },
+    {
+      "id": "rajdhani_delay",
+      "name": "Rajdhani 20 min Late",
+      "description": "Down Rajdhani 12956 enters the section 20 minutes late, creating a crossing conflict on the single line.",
+      "events": [
+        {"at_min": 0, "action": "departure_delay", "train": "T1", "minutes": 20}
+      ]
+    },
+    {
+      "id": "signal_fail",
+      "name": "Signal Failure at Kosi Kalan",
+      "description": "A signal failure at KSV slows all trains through block B4 to 40 km/h for 40 minutes.",
+      "events": [
+        {"at_min": 25, "action": "speed_restriction", "block": "B4", "speed": 40, "duration_min": 40}
+      ]
+    },
+    {
+      "id": "freight_breakdown",
+      "name": "Freight Breakdown",
+      "description": "Up freight train breaks down at Palwal loop for 25 minutes, blocking a loop and forcing re-ordering.",
+      "events": [
+        {"at_min": 35, "action": "train_hold", "train": "T10", "at_station": "PWL", "minutes": 25}
+      ]
+    },
+    {
+      "id": "fog",
+      "name": "Fog / Speed Restriction",
+      "description": "Dense fog reduces max speed to 60 km/h across the whole section for one hour.",
+      "events": [
+        {"at_min": 20, "action": "network_speed", "speed": 60, "duration_min": 60}
+      ]
+    }
+  ]
+}
