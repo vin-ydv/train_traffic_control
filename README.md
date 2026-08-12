@@ -53,12 +53,13 @@ RailMind/
     └── test_core.py       # safety + AI-beats-FCFS tests
 ```
 
-## The 5 screens
+## The 6 screens
 1. **Live map** — trains moving block-by-block; conflict glow; PLAY/PAUSE/STEP.
 2. **AI Advice** — recommendation card with reason + Accept/Reject.
 3. **What-If** — manually hold a train; see cost vs AI suggestion.
 4. **KPIs** — AI vs Manual comparison (throughput, delay, punctuality, pax-min).
-5. **Log** — event timeline + live train status table.
+5. **Team Ops** — control-room risk brief, shift notes, and CSV export of recent dispatch events.
+6. **Log** — event timeline + live train status table.
 
 ## How the "AI" works (honest version)
 - Conflict detection: at each step, trains waiting at a station to enter an occupied

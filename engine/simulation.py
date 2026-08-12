@@ -399,6 +399,40 @@ class Simulation:
             }
         return None
 
+    def team_brief(self) -> dict:
+        """Summarize the current dispatch situation for the operations team."""
+        kpis = self.kpis()
+        recommendation = self.current_recommendation()
+        if recommendation:
+            held = recommendation.get("hold", [])
+            release = recommendation.get("release")
+            chosen = next((t for t in self.trains if t.id == release), None)
+            hold_ids = [t.number for t in self.trains if t.id in held]
+            risk_level = "High" if len(hold_ids) >= 2 or kpis["active_trains"] >= 4 else "Moderate"
+            summary = (
+                f"Contingency on {recommendation['block']}: release {chosen.number if chosen else 'train'} "
+                f"while holding {', '.join(hold_ids) if hold_ids else 'other traffic'} to protect throughput."
+            )
+            return {
+                "risk_level": risk_level,
+                "summary": summary,
+                "recommended_release": chosen.number if chosen else release,
+                "holding_trains": hold_ids,
+                "in_conflict": True,
+            }
+        risk_level = "Low" if kpis["conflicts_now"] == 0 else "Moderate"
+        summary = (
+            "No active single-line conflict requires an immediate dispatch change. "
+            "The line remains stable and the controller can continue normal monitoring."
+        )
+        return {
+            "risk_level": risk_level,
+            "summary": summary,
+            "recommended_release": "None",
+            "holding_trains": [],
+            "in_conflict": False,
+        }
+
 
 def compare(scenario_id: str, minutes: int = 120) -> tuple[Simulation, Simulation]:
     """Run FCFS and AI back-to-back; return (fcfs_sim, ai_sim)."""

@@ -36,3 +36,10 @@ def test_disruption_injection_speed_and_fog():
     sim.run(30)
     assert sim.kpis()["safety_violations"] == 0
 
+
+def test_team_brief_reports_dispatch_context():
+    sim = Simulation.new("normal", mode="ai")
+    brief = sim.team_brief()
+    assert brief["risk_level"] in {"Low", "Moderate", "High"}
+    assert isinstance(brief["summary"], str)
+    assert brief["in_conflict"] in {True, False}

@@ -1,36 +1,78 @@
 """Dark control-room theme + Plotly map drawing helpers."""
 from __future__ import annotations
+
 import plotly.graph_objects as go
 
 from engine.model import PRIORITY_COLOR, PRIORITY_LABEL
 
-BG = "#0f172a"
-PANEL = "#111827"
-CARD = "#1f2937"
-TEXT = "#e5e7eb"
+BG = "#0b0f19"
+PANEL = "#0f172a"
+CARD = "#1e293b"
+TEXT = "#f1f5f9"
 MUTED = "#94a3b8"
 ACCENT = "#38bdf8"
 GREEN = "#22c55e"
 RED = "#ef4444"
 AMBER = "#f59e0b"
+PURPLE = "#a855f7"
 
 
 def inject_css(st) -> None:
     st.markdown(
         f"""
         <style>
-        .stApp {{ background: {BG}; color: {TEXT}; }}
-        section[data-testid="stSidebar"] {{ background: {PANEL}; }}
-        .kpi-card {{ background:{CARD}; padding:14px 16px; border-radius:10px;
-                    border:1px solid #334155; margin-bottom:10px; }}
-        .kpi-label {{ color:{MUTED}; font-size:0.8rem; text-transform:uppercase;
-                      letter-spacing:0.05em;}}
-        .kpi-value {{ font-size:1.9rem; font-weight:700; }}
-        .rec-card {{ background:{CARD}; padding:14px; border-radius:10px;
-                    border-left:4px solid {ACCENT}; margin-bottom:10px; }}
-        .badge-ok {{ color:{GREEN}; font-weight:700; }}
-        .badge-bad {{ color:{RED}; font-weight:700; }}
-        .small {{ color:{MUTED}; font-size:0.85rem; }}
+        .stApp {{ background: {BG}; color: {TEXT}; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }}
+        section[data-testid="stSidebar"] {{ background: {PANEL}; border-right: 1px solid #1e293b; }}
+        .kpi-card {{
+            background: {CARD};
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            margin-bottom: 12px;
+        }}
+        .kpi-label {{
+            color: {MUTED};
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+        }}
+        .kpi-value {{
+            font-size: 2.1rem;
+            font-weight: 800;
+            margin-top: 4px;
+        }}
+        .rec-card {{
+            background: {CARD};
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 5px solid {ACCENT};
+            border: 1px solid #334155;
+            margin-bottom: 14px;
+        }}
+        .badge-ok {{ color: {GREEN}; font-weight: 700; }}
+        .badge-bad {{ color: {RED}; font-weight: 700; }}
+        .small {{ color: {MUTED}; font-size: 0.85rem; }}
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 8px;
+            background-color: {PANEL};
+            padding: 6px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            height: 40px;
+            background-color: transparent;
+            border-radius: 8px;
+            color: {TEXT};
+            font-weight: 600;
+            padding: 0 16px;
+        }}
+        .stTabs [aria-selected="true"] {{
+            background-color: {ACCENT} !important;
+            color: #0b0f19 !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -53,7 +95,6 @@ def draw_map(sim) -> go.Figure:
     net = sim.net
     fig = go.Figure()
 
-    # blocks
     for blk in net.blocks:
         x1, y1, x2, y2 = net.block_xy(blk)
         occupied = bool(blk.occupant_up or blk.occupant_down)
@@ -70,7 +111,6 @@ def draw_map(sim) -> go.Figure:
             showlegend=False,
         ))
 
-    # conflict glow
     for c in sim.upcoming_conflicts(horizon=20):
         blk = next(b for b in net.blocks if b.id == c["block"])
         x1, y1, x2, y2 = net.block_xy(blk)
@@ -81,10 +121,9 @@ def draw_map(sim) -> go.Figure:
             showlegend=False,
         ))
 
-    # stations
-    sx, sy, slabel, loops = [], [], [], []
+    sx, sy, slabel = [], [], []
     for s in net.stations.values():
-        sx.append(s.x); sy.append(s.y); slabel.append(s.id); loops.append(s.loops)
+        sx.append(s.x); sy.append(s.y); slabel.append(s.id)
     fig.add_trace(go.Scatter(
         x=sx, y=sy, mode="markers+text",
         marker=dict(size=14, color=ACCENT, line=dict(width=2, color="#0ea5e9")),
@@ -93,7 +132,6 @@ def draw_map(sim) -> go.Figure:
         hoverinfo="text", name="Stations",
     ))
 
-    # trains
     for t in sim.trains:
         if not t.entered_section or t.finished:
             continue

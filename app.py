@@ -3,7 +3,10 @@
 Run with:  streamlit run app.py
 """
 from __future__ import annotations
+
+import io
 import time
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -31,9 +34,20 @@ def init_state() -> None:
         st.session_state.baseline = None
     if "ai_compare" not in st.session_state:
         st.session_state.ai_compare = None
+    if "ops_note" not in st.session_state:
+        st.session_state.ops_note = "Monitor heavy-occupancy trains for single-line conflict windows."
+
+
+def build_team_brief(sim: Simulation) -> dict:
+    brief = sim.team_brief()
+    rec = sim.current_recommendation()
+    brief["infractions"] = sim.kpis()["safety_violations"]
+    brief["recommendation"] = rec
+    return brief
 
 
 init_state()
+sim: Simulation = st.session_state.sim
 
 
 # ----------------------------- sidebar -----------------------------
@@ -55,7 +69,6 @@ with st.sidebar:
     if st.button("↻ Reset / Load scenario", use_container_width=True):
         st.session_state.sim = Simulation.new(scen_choice, mode=mode)
         st.session_state.playing = False
-        # precompute comparison
         fcfs, ai = compare(scen_choice, minutes=120)
         st.session_state.baseline = fcfs.kpis()
         st.session_state.ai_compare = ai.kpis()
@@ -97,9 +110,12 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
+    brief = build_team_brief(st.session_state.sim)
+    st.markdown(f"**Ops risk:** {brief['risk_level']}")
+    st.caption(brief['summary'])
+    st.caption(f"Recommended release: {brief['recommended_release']}")
     st.caption("SIH 2025 · Problem 25022")
 
-sim: Simulation = st.session_state.sim
 
 # auto-play loop (runs one step per rerun)
 if st.session_state.playing and sim.time < 180:
@@ -109,8 +125,8 @@ if st.session_state.playing and sim.time < 180:
 
 
 # ----------------------------- main tabs -----------------------------
-tab_map, tab_advice, tab_whatif, tab_kpi, tab_log = st.tabs(
-    ["🗺 Live Map", "🤖 AI Advice", "🔀 What-If", "📊 KPIs", "📋 Log & Scenarios"]
+tab_map, tab_advice, tab_whatif, tab_kpi, tab_team, tab_log = st.tabs(
+    ["🗺 Live Map", "🤖 AI Advice", "🔀 What-If", "📊 KPIs", "🧭 Team Ops", "📋 Log & Scenarios"]
 )
 
 # ---------- TAB 1: MAP ----------
@@ -119,18 +135,18 @@ with tab_map:
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1: st.markdown(kpi_card("Time", f"T+{sim.time}m"), unsafe_allow_html=True)
     with c2: st.markdown(kpi_card("Throughput", f"{k['throughput']} trains"),
-                         unsafe_allow_html=True)
+                        unsafe_allow_html=True)
     with c3: st.markdown(kpi_card("Avg delay", f"{k['avg_delay']}m",
                                   good=None if k['avg_delay'] <= 5 else False),
-                         unsafe_allow_html=True)
+                        unsafe_allow_html=True)
     with c4: st.markdown(kpi_card("Punctuality", f"{k['punctuality']:.0f}%",
                                   good=k['punctuality'] >= 80),
-                         unsafe_allow_html=True)
+                        unsafe_allow_html=True)
     with c5:
         good = k['safety_violations'] == 0
         st.markdown(kpi_card("Safety",
-                             f"{k['safety_violations']} violations",
-                             good=good), unsafe_allow_html=True)
+                            f"{k['safety_violations']} violations",
+                            good=good), unsafe_allow_html=True)
 
     st.markdown(legend_html(), unsafe_allow_html=True)
     st.plotly_chart(draw_map(sim), use_container_width=True, config={"displayModeBar": False})
@@ -174,26 +190,37 @@ with tab_advice:
 
 # ---------- TAB 3: WHAT-IF ----------
 with tab_whatif:
-    st.subheader("What-If Simulator")
-    st.write("Override a decision and see the cost vs. the AI recommendation.")
-    trains_now = [t for t in sim.trains if t.at_station and not t.finished]
-    if not trains_now:
-        st.info("No trains currently at stations to hold.")
-    else:
-        choice = st.selectbox(
-            "Hold this train at its current station",
-            options=[t.id for t in trains_now],
-            format_func=lambda x: f"{sim._train(x).number} {sim._train(x).name}"
-                                  f" at {sim._train(x).at_station}",
-        )
-        mins = st.slider("Hold (minutes)", 1, 10, 3)
-        if st.button("Apply my decision", use_container_width=True):
-            t = sim._train(choice)
-            t.extra_hold += mins
-            st.warning(f"{t.number} held for {mins} extra min at {t.at_station}.")
-            rec = sim.current_recommendation()
-            if rec:
-                st.info(f"AI suggests instead: {rec['action']} — {rec['impact']}")
+    st.subheader("🔀 What-If Scenario Sandbox")
+    st.caption("Test alternate dispatch decisions in real-time. Override the AI or adjust train holds to inspect downstream impact.")
+
+    colA, colB = st.columns(2)
+    with colA:
+        active_trains = [t.number for t in sim.trains if t.entered_section and not t.finished]
+        if not active_trains:
+            st.info("No active trains currently on section.")
+        else:
+            choice = st.selectbox("Select Active Train", options=active_trains,
+                                 format_func=lambda n: f"{n} - {next(t.name for t in sim.trains if t.number == n)}")
+            mins = st.slider("Hold Duration (minutes)", 1, 15, 3)
+            if st.button("Apply Custom Hold Override", use_container_width=True):
+                t = sim._train(choice)
+                if t:
+                    t.extra_hold += mins
+                    st.warning(f"⚠️ Train {t.number} ({t.name}) held for {mins} extra minutes.")
+                    rec = sim.current_recommendation()
+                    if rec:
+                       st.info(f"💡 AI Counter-Advice: {rec['action']} — {rec['impact']}")
+
+    with colB:
+        st.markdown("#### Scenario Impact Estimator")
+        st.write("Simulate how holding high-priority trains affects network throughput and cumulative delay.")
+        if st.session_state.baseline:
+            b = st.session_state.baseline
+            a = st.session_state.ai_compare
+            st.metric("Estimated Delay Delta", f"{a['avg_delay'] - b['avg_delay']:.1f} min", delta_color="inverse")
+            st.metric("Passenger Punctuality Delta", f"{a['punctuality'] - b['punctuality']:.1f}%")
+        else:
+            st.info("Run baseline comparison by clicking **Reset / Load scenario** in the sidebar.")
 
 # ---------- TAB 4: KPIs ----------
 with tab_kpi:
@@ -214,17 +241,16 @@ with tab_kpi:
                   f"{int(b['pax_minutes']-a['pax_minutes']):,}",
                   delta="vs manual")
 
-        # chart
         cats = ["Throughput", "Avg delay", "Punctuality"]
         fig = go.Figure()
         fig.add_trace(go.Bar(name="Manual (FCFS)", x=cats,
-                             y=[b["throughput"], b["avg_delay"], b["punctuality"]],
-                             marker_color="#6b7280"))
+                            y=[b["throughput"], b["avg_delay"], b["punctuality"]],
+                            marker_color="#6b7280"))
         fig.add_trace(go.Bar(name="AI Assist", x=cats,
-                             y=[a["throughput"], a["avg_delay"], a["punctuality"]],
-                             marker_color=GREEN))
+                            y=[a["throughput"], a["avg_delay"], a["punctuality"]],
+                            marker_color=GREEN))
         fig.update_layout(barmode="group", paper_bgcolor=BG, plot_bgcolor=BG,
-                          font=dict(color=TEXT), height=380)
+                         font=dict(color=TEXT), height=380)
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("### Why the AI wins")
@@ -236,7 +262,59 @@ with tab_kpi:
             "a freight carrying none."
         )
 
-# ---------- TAB 5: LOG ----------
+# ---------- TAB 5: TEAM OPS ----------
+with tab_team:
+    st.subheader("Control-room briefing")
+    brief = build_team_brief(sim)
+    k = sim.kpis()
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Risk level", brief["risk_level"])
+    with c2:
+        st.metric("Active trains", k["active_trains"])
+    with c3:
+        st.metric("Safety infractions", k["safety_violations"])
+
+    st.info(brief["summary"])
+
+    if brief["recommendation"]:
+        rec = brief["recommendation"]
+        st.markdown(
+            f"""<div class="rec-card">
+            <div class="small">TEAM DECISION BRIEF</div>
+            <h3 style='margin:6px 0;'>🚦 {rec['action']}</h3>
+            <p><b>Why it matters:</b> {rec['reason']}</p>
+            <p class="small"><b>Expected effect:</b> {rec['impact']}</p>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.success("No immediate dispatch intervention required; the section is stable.")
+
+    with st.expander("Controller notes", expanded=True):
+        note = st.text_area("Add a team note for shift handover", value=st.session_state.ops_note, key="ops_note_text")
+        if st.button("Save note"):
+            st.session_state.ops_note = note
+            st.success("Controller note saved for this session.")
+
+    export_rows = [{
+        "Time": f"T+{e.time}m",
+        "Type": e.kind,
+        "Train": e.train or "",
+        "Block": e.block or "",
+        "Detail": e.detail,
+    } for e in sim.events[-100:]]
+    csv_buffer = io.StringIO()
+    pd.DataFrame(export_rows).to_csv(csv_buffer, index=False)
+    st.download_button(
+        "Download ops report (CSV)",
+        data=csv_buffer.getvalue().encode("utf-8"),
+        file_name="railmind_ops_report.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+# ---------- TAB 6: LOG ----------
 with tab_log:
     st.subheader("Scenario description")
     scen = next(s for s in SCENARIOS if s["id"] == sim.scenario_id)
