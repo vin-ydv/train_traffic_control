@@ -11,9 +11,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from engine.model import PRIORITY_LABEL, load_scenarios
+from engine.model import load_scenarios
 from engine.simulation import Simulation, compare
-from ui.theme import (AMBER, BG, GREEN, RED, TEXT, draw_map, inject_css,
+from ui.theme import (BG, GREEN, TEXT, draw_map, inject_css,
                       kpi_card, legend_html)
 
 st.set_page_config(page_title="RailMind Control", page_icon="🚆", layout="wide")
@@ -66,7 +66,7 @@ with st.sidebar:
                     horizontal=True,
                     index=0 if st.session_state.sim.mode == "ai" else 1)
 
-    if st.button("↻ Reset / Load scenario", use_container_width=True):
+    if st.button("↻ Reset / Load scenario", width='stretch'):
         st.session_state.sim = Simulation.new(scen_choice, mode=mode)
         st.session_state.playing = False
         fcfs, ai = compare(scen_choice, minutes=120)
@@ -78,11 +78,11 @@ with st.sidebar:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("▶ Play" if not st.session_state.playing else "⏸ Pause",
-                     use_container_width=True):
+                     width='stretch'):
             st.session_state.playing = not st.session_state.playing
             st.rerun()
     with col2:
-        if st.button("⏭ Step", use_container_width=True):
+        if st.button("⏭ Step", width='stretch'):
             st.session_state.sim.step()
             st.rerun()
 
@@ -98,15 +98,18 @@ with st.sidebar:
         "Signal fail at KSV",
         "Fog (60 km/h) for 60m",
     ])
-    if st.button("Apply", use_container_width=True) and inj != "None":
+    if st.button("Apply", width='stretch') and inj != "None":
         sim = st.session_state.sim
         if inj.startswith("Delay"):
             t = next(x for x in sim.trains if x.number == "12956")
-            t.delay_min += 20; t.planned_dep += 20; t.extra_hold += 0
+            t.delay_min += 20
+            t.planned_dep += 20
+            t.extra_hold += 0
         elif inj.startswith("Signal"):
             sim.speed_restrictions["B4"] = 40
         elif inj.startswith("Fog"):
-            sim.network_speed = 60; sim.network_speed_until = sim.time + 60
+            sim.network_speed = 60
+            sim.network_speed_until = sim.time + 60
         st.rerun()
 
     st.divider()
@@ -133,28 +136,36 @@ tab_map, tab_advice, tab_whatif, tab_kpi, tab_team, tab_log = st.tabs(
 with tab_map:
     k = sim.kpis()
     c1, c2, c3, c4, c5 = st.columns(5)
-    with c1: st.markdown(kpi_card("Time", f"T+{sim.time}m"), unsafe_allow_html=True)
-    with c2: st.markdown(kpi_card("Throughput", f"{k['throughput']} trains"),
-                        unsafe_allow_html=True)
-    with c3: st.markdown(kpi_card("Avg delay", f"{k['avg_delay']}m",
-                                  good=None if k['avg_delay'] <= 5 else False),
-                        unsafe_allow_html=True)
-    with c4: st.markdown(kpi_card("Punctuality", f"{k['punctuality']:.0f}%",
-                                  good=k['punctuality'] >= 80),
-                        unsafe_allow_html=True)
+    with c1:
+        st.markdown(kpi_card("Time", f"T+{sim.time}m"), unsafe_allow_html=True)
+    with c2:
+        st.markdown(kpi_card("Throughput", f"{k['throughput']} trains"), unsafe_allow_html=True)
+    with c3:
+        st.markdown(
+            kpi_card("Avg delay", f"{k['avg_delay']}m", good=None if k['avg_delay'] <= 5 else False),
+            unsafe_allow_html=True,
+        )
+    with c4:
+        st.markdown(
+            kpi_card("Punctuality", f"{k['punctuality']:.0f}%", good=k['punctuality'] >= 80),
+            unsafe_allow_html=True,
+        )
     with c5:
         good = k['safety_violations'] == 0
-        st.markdown(kpi_card("Safety",
-                            f"{k['safety_violations']} violations",
-                            good=good), unsafe_allow_html=True)
+        st.markdown(
+            kpi_card("Safety", f"{k['safety_violations']} violations", good=good),
+            unsafe_allow_html=True,
+        )
 
     st.markdown(legend_html(), unsafe_allow_html=True)
-    st.plotly_chart(draw_map(sim), use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(draw_map(sim), width='stretch', config={"displayModeBar": False})
 
     confs = sim.upcoming_conflicts(horizon=30)
     if confs:
-        st.warning(f"⚠ Predicted conflict(s): " +
-                   ", ".join(f"{c['block']} in {c['in_min']}m" for c in confs[:3]))
+        st.warning(
+            "⚠ Predicted conflict(s): " +
+            ", ".join(f"{c['block']} in {c['in_min']}m" for c in confs[:3])
+        )
     else:
         st.success("✓ No conflicts predicted in the next 30 minutes.")
 
@@ -176,13 +187,14 @@ with tab_advice:
         )
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button("✅ Accept AI advice", use_container_width=True):
+            if st.button("✅ Accept AI advice", width='stretch'):
                 for hid in rec["hold"]:
                     t = sim._train(hid)
-                    if t: t.extra_hold += 2
+                    if t:
+                        t.extra_hold += 2
                 st.success("Applied. The held trains will wait 2 more minutes.")
         with col_b:
-            if st.button("✖ Reject (use my judgement)", use_container_width=True):
+            if st.button("✖ Reject (use my judgement)", width='stretch'):
                 st.info("Logged as controller override.")
     st.divider()
     st.caption("💡 (Stretch) LLM copilot: ask 'what if I route 12956 via KSV loop?' — "
@@ -191,7 +203,10 @@ with tab_advice:
 # ---------- TAB 3: WHAT-IF ----------
 with tab_whatif:
     st.subheader("🔀 What-If Scenario Sandbox")
-    st.caption("Test alternate dispatch decisions in real-time. Override the AI or adjust train holds to inspect downstream impact.")
+    st.caption(
+        "Test alternate dispatch decisions in real-time. Override the AI or "
+        "adjust train holds to inspect downstream impact."
+    )
 
     colA, colB = st.columns(2)
     with colA:
@@ -199,17 +214,23 @@ with tab_whatif:
         if not active_trains:
             st.info("No active trains currently on section.")
         else:
-            choice = st.selectbox("Select Active Train", options=active_trains,
-                                 format_func=lambda n: f"{n} - {next(t.name for t in sim.trains if t.number == n)}")
+            def _format_train(n):
+                return f"{n} - {next(t.name for t in sim.trains if t.number == n)}"
+
+            choice = st.selectbox(
+                "Select Active Train",
+                options=active_trains,
+                format_func=_format_train,
+            )
             mins = st.slider("Hold Duration (minutes)", 1, 15, 3)
-            if st.button("Apply Custom Hold Override", use_container_width=True):
+            if st.button("Apply Custom Hold Override", width='stretch'):
                 t = sim._train(choice)
                 if t:
                     t.extra_hold += mins
                     st.warning(f"⚠️ Train {t.number} ({t.name}) held for {mins} extra minutes.")
                     rec = sim.current_recommendation()
                     if rec:
-                       st.info(f"💡 AI Counter-Advice: {rec['action']} — {rec['impact']}")
+                        st.info(f"💡 AI Counter-Advice: {rec['action']} — {rec['impact']}")
 
     with colB:
         st.markdown("#### Scenario Impact Estimator")
@@ -243,15 +264,30 @@ with tab_kpi:
 
         cats = ["Throughput", "Avg delay", "Punctuality"]
         fig = go.Figure()
-        fig.add_trace(go.Bar(name="Manual (FCFS)", x=cats,
-                            y=[b["throughput"], b["avg_delay"], b["punctuality"]],
-                            marker_color="#6b7280"))
-        fig.add_trace(go.Bar(name="AI Assist", x=cats,
-                            y=[a["throughput"], a["avg_delay"], a["punctuality"]],
-                            marker_color=GREEN))
-        fig.update_layout(barmode="group", paper_bgcolor=BG, plot_bgcolor=BG,
-                         font=dict(color=TEXT), height=380)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.add_trace(
+            go.Bar(
+                name="Manual (FCFS)",
+                x=cats,
+                y=[b["throughput"], b["avg_delay"], b["punctuality"]],
+                marker_color="#6b7280",
+            )
+        )
+        fig.add_trace(
+            go.Bar(
+                name="AI Assist",
+                x=cats,
+                y=[a["throughput"], a["avg_delay"], a["punctuality"]],
+                marker_color=GREEN,
+            )
+        )
+        fig.update_layout(
+            barmode="group",
+            paper_bgcolor=BG,
+            plot_bgcolor=BG,
+            font=dict(color=TEXT),
+            height=380,
+        )
+        st.plotly_chart(fig, width='stretch')
 
         st.markdown("### Why the AI wins")
         st.write(
@@ -311,7 +347,7 @@ with tab_team:
         data=csv_buffer.getvalue().encode("utf-8"),
         file_name="railmind_ops_report.csv",
         mime="text/csv",
-        use_container_width=True,
+        width='stretch',
     )
 
 # ---------- TAB 6: LOG ----------
@@ -327,7 +363,7 @@ with tab_log:
         for e in reversed(sim.events[-200:])
     ]
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, height=380)
+        st.dataframe(pd.DataFrame(rows), width='stretch', height=380)
     else:
         st.caption("No events yet.")
 
@@ -341,4 +377,4 @@ with tab_log:
                       ("At " + t.at_station if t.at_station else "On " + (t.on_block or ""))),
             "Delay (m)": max(0, sim.time - t.planned_dep),
         })
-    st.dataframe(pd.DataFrame(trows), use_container_width=True)
+    st.dataframe(pd.DataFrame(trows), width='stretch')

@@ -111,8 +111,13 @@ def draw_map(sim) -> go.Figure:
             showlegend=False,
         ))
 
+    # O(1) block lookup, built once instead of a linear search per conflict.
+    blocks_by_id = {b.id: b for b in net.blocks}
+
     for c in sim.upcoming_conflicts(horizon=20):
-        blk = next(b for b in net.blocks if b.id == c["block"])
+        blk = blocks_by_id.get(c["block"])
+        if blk is None:
+            continue
         x1, y1, x2, y2 = net.block_xy(blk)
         fig.add_trace(go.Scatter(
             x=[x1, x2], y=[y1, y2], mode="lines",
@@ -123,7 +128,9 @@ def draw_map(sim) -> go.Figure:
 
     sx, sy, slabel = [], [], []
     for s in net.stations.values():
-        sx.append(s.x); sy.append(s.y); slabel.append(s.id)
+        sx.append(s.x)
+        sy.append(s.y)
+        slabel.append(s.id)
     fig.add_trace(go.Scatter(
         x=sx, y=sy, mode="markers+text",
         marker=dict(size=14, color=ACCENT, line=dict(width=2, color="#0ea5e9")),

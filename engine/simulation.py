@@ -11,7 +11,7 @@ Two controllers are supported via a decision callback:
 from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Optional
 
 from .model import Network, Train, load_trains, load_scenarios
 
@@ -222,10 +222,12 @@ class Simulation:
             return sorted(contenders,
                           key=lambda x: (x.planned_dep, -x.priority))[0]
         # AI mode: passenger-weighted urgency
+
         def score(t: Train) -> float:
             delay = max(0, self.time - t.planned_dep)
             urgency = t.priority * 20 + t.pax / 10.0 + delay * 5
             return urgency
+
         return sorted(contenders, key=score, reverse=True)[0]
 
     # ---------- helpers / KPIs ----------
