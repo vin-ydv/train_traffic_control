@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import io
 import time
+import json
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -48,6 +50,58 @@ def build_team_brief(sim: Simulation) -> dict:
 
 init_state()
 sim: Simulation = st.session_state.sim
+
+# Process external events posted to data/external_events.jsonl (from ingest gateway)
+def process_external_events(sim: Simulation) -> None:
+    """Read external_events.jsonl, convert common event types into sim.pending_events entries,
+    and clear the queue file. This allows a simple REST gateway to push events for demos/pilots.
+    """
+    qf = Path(__file__).resolve().parent / 'data' / 'external_events.jsonl'
+    if not qf.exists():
+        return
+    try:
+        with open(qf, 'r', encoding='utf-8') as f:
+            lines = [l.strip() for l in f if l.strip()]
+    except Exception:
+        return
+    if not lines:
+        return
+    for line in lines:
+        try:
+            ev = json.loads(line)
+        except Exception:
+            continue
+        et = ev.get('event_type')
+        # Map canonical events to simulation pending events where possible
+        if et == 'departure_delay' or (et == 'train_delay'):
+            # {"event_type":"departure_delay","train_id":"T1","minutes":20}
+            t = ev.get('train_id') or ev.get('train')
+            mins = ev.get('minutes') or ev.get('minutes_min') or 0
+            sim.pending_events.append({'at_min': sim.time, 'action': 'departure_delay', 'train': t, 'minutes': mins})
+        elif et == 'speed_restriction':
+            blk = ev.get('block_id') or ev.get('block')
+            sp = ev.get('speed') or ev.get('speed_kmh')
+            dur = ev.get('duration_min') or ev.get('duration') or 0
+            sim.pending_events.append({'at_min': sim.time, 'action': 'speed_restriction', 'block': blk, 'speed': sp, 'duration_min': dur})
+        elif et == 'network_speed':
+            sp = ev.get('speed') or ev.get('speed_kmh')
+            dur = ev.get('duration_min') or ev.get('duration') or 0
+            sim.pending_events.append({'at_min': sim.time, 'action': 'network_speed', 'speed': sp, 'duration_min': dur})
+        elif et == 'train_hold':
+            t = ev.get('train_id') or ev.get('train')
+            mins = ev.get('minutes') or 0
+            at_station = ev.get('at_station') or ev.get('station')
+            sim.pending_events.append({'at_min': sim.time, 'action': 'train_hold', 'train': t, 'minutes': mins, 'at_station': at_station})
+        # Add other mappings as needed for your sources
+    # Clear queue file after processing
+    try:
+        qf.unlink()
+    except Exception:
+        # best-effort
+        open(qf, 'w', encoding='utf-8').close()
+
+# run processing at load time so any posted events are picked up immediately
+process_external_events(sim)
 
 
 # ----------------------------- sidebar -----------------------------
