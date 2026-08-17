@@ -5,6 +5,7 @@ Run with:  streamlit run app.py
 from __future__ import annotations
 
 import io
+import re
 import time
 import json
 from pathlib import Path
@@ -45,7 +46,43 @@ def build_team_brief(sim: Simulation) -> dict:
     rec = sim.current_recommendation()
     brief["infractions"] = sim.kpis()["safety_violations"]
     brief["recommendation"] = rec
+    brief["forecast"] = sim.forecast_window(18)
     return brief
+
+
+def forecast_summary(sim: Simulation) -> str:
+    outlook = sim.forecast_window(18)
+    if not outlook:
+        return "No dispatch actions are expected in the next 20 minutes; the section is stable."
+    first = outlook[0]
+    return (
+        f"Next key intervention: {first['summary']} around T+{first['in_min']}m. "
+        f"This keeps throughput ahead of the current single-line conflict at {first['block']}."
+    )
+
+
+def parse_whatif_prompt(prompt: str) -> dict:
+    text = (prompt or "").strip()
+    if not text:
+        return {}
+
+    out = {}
+    train_match = re.search(r"(?:hold|delay)\s+(?:train\s+)?(\d{4,5})\s+(?:for\s+)?(\d+)", text, re.I)
+    if train_match:
+        out["train_number"] = train_match.group(1)
+        out["hold_minutes"] = int(train_match.group(2))
+
+    block_match = re.search(r"(?:at|block|section)\s*([A-Z]\d+)\s*(?:to|=|at)\s*(\d+)", text, re.I)
+    if block_match:
+        out["block_id"] = block_match.group(1).upper()
+        out["speed_limit"] = float(block_match.group(2))
+
+    cap_match = re.search(r"(?:cap|limit|reduce)\s+([A-Z]\d+)\s*(?:to|=|at)\s*(\d+)", text, re.I)
+    if cap_match:
+        out["block_id"] = cap_match.group(1).upper()
+        out["speed_limit"] = float(cap_match.group(2))
+
+    return out
 
 
 init_state()
@@ -223,6 +260,13 @@ with tab_map:
     else:
         st.success("✓ No conflicts predicted in the next 30 minutes.")
 
+    forecast = sim.forecast_window(18)
+    if forecast:
+        first = forecast[0]
+        st.caption(f"AI outlook: {first['summary']} for {first['block']} around T+{first['in_min']}m.")
+    else:
+        st.caption("AI outlook: no immediate intervention required in the next 20 minutes.")
+
 # ---------- TAB 2: ADVICE ----------
 with tab_advice:
     st.subheader("AI Recommendations")
@@ -250,7 +294,19 @@ with tab_advice:
         with col_b:
             if st.button("✖ Reject (use my judgement)", width='stretch'):
                 st.info("Logged as controller override.")
+
     st.divider()
+    st.subheader("Section forecast")
+    forecast = sim.forecast_window(10)
+    if forecast:
+        st.dataframe(
+            pd.DataFrame(forecast)[["in_min", "block", "summary"]],
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("No additional dispatch actions forecast in the next 10 minutes.")
+    st.caption(forecast_summary(sim))
     st.caption("💡 (Stretch) LLM copilot: ask 'what if I route 12956 via KSV loop?' — "
                "connect a Groq/Gemini key to enable natural-language what-if.")
 
@@ -296,6 +352,33 @@ with tab_whatif:
             st.metric("Passenger Punctuality Delta", f"{a['punctuality'] - b['punctuality']:.1f}%")
         else:
             st.info("Run baseline comparison by clicking **Reset / Load scenario** in the sidebar.")
+
+        st.divider()
+        st.markdown("#### AI dispatch copilot")
+        with st.form("copilot_whatif"):
+            prompt = st.text_area(
+                "What-if prompt",
+                value="Hold 12956 for 8 minutes",
+                help="Examples: 'Hold 12956 for 8 minutes', 'Cap B4 to 40 km/h for 20 min'",
+            )
+            submitted = st.form_submit_button("Run scenario")
+
+        if submitted:
+            cfg = parse_whatif_prompt(prompt)
+            if not cfg:
+                st.warning("I couldn't parse that request. Try: 'Hold 12956 for 8 minutes' or 'Cap B4 to 40 km/h for 20 min'.")
+            else:
+                result = sim.evaluate_what_if(
+                    train_number=cfg.get("train_number"),
+                    hold_minutes=cfg.get("hold_minutes", 0),
+                    block_id=cfg.get("block_id"),
+                    speed_limit=cfg.get("speed_limit"),
+                    duration_min=20,
+                )
+                st.success(result["verdict"])
+                st.caption(result["summary"])
+                st.metric("Delay delta (30m)", f"{result['delay_delta_min']:.1f} min", delta_color="inverse")
+                st.metric("Punctuality delta", f"{result['punctuality_delta_pts']:.1f} pts")
 
 # ---------- TAB 4: KPIs ----------
 with tab_kpi:
@@ -366,6 +449,7 @@ with tab_team:
         st.metric("Safety infractions", k["safety_violations"])
 
     st.info(brief["summary"])
+    st.caption(forecast_summary(sim))
 
     if brief["recommendation"]:
         rec = brief["recommendation"]

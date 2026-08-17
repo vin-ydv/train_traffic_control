@@ -43,3 +43,20 @@ def test_team_brief_reports_dispatch_context():
     assert brief["risk_level"] in {"Low", "Moderate", "High"}
     assert isinstance(brief["summary"], str)
     assert brief["in_conflict"] in {True, False}
+
+
+def test_forecast_window_and_reasoning():
+    sim = Simulation.new("normal", mode="ai")
+    rec = sim.current_recommendation()
+    if rec:
+        assert sim.release_explanation(sim._train(rec["release"]), [sim._train(h) for h in rec["hold"] if sim._train(h)])
+    forecast = sim.forecast_window(5)
+    assert isinstance(forecast, list)
+
+
+def test_what_if_analysis() -> None:
+    sim = Simulation.new("normal", mode="ai")
+    analysis = sim.evaluate_what_if(train_number="12956", hold_minutes=5)
+    assert "delay_delta_min" in analysis
+    assert isinstance(analysis["summary"], str)
+    assert "baseline" in analysis and "candidate" in analysis

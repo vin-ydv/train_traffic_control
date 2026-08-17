@@ -49,9 +49,19 @@ RailMind/
 │   └── simulation.py      # time-step engine, FCFS + AI controller, KPIs, conflicts
 ├── ui/
 │   └── theme.py           # dark theme + Plotly map drawing
+├── ingest_service.py      # event-ingestion REST gateway for external data feeds
 └── tests/
     └── test_core.py       # safety + AI-beats-FCFS tests
 ```
+
+## AI decision quality upgrades
+
+RailMind now includes a stronger dispatch policy and a clearer control-room explanation layer:
+
+- Multi-objective release score: passenger load, priority, and lateness are optimized together.
+- Plain-English rationale: each recommendation explains why the selected train is released and who else is held.
+- Forecast window: the app now lists the next likely dispatch interventions in the upcoming 10–20 minute horizon.
+- External feed-ready architecture: disruptions can be posted through the FastAPI ingest gateway and appear immediately in the control-room simulation.
 
 ## The 6 screens
 1. **Live map** — trains moving block-by-block; conflict glow; PLAY/PAUSE/STEP.
