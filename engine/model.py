@@ -7,6 +7,13 @@ from typing import Optional
 
 from db.models import ensure_db_ready, load_blocks_from_db, load_stations_from_db, load_trains_from_db
 
+# Optional MongoDB support
+import os
+try:
+    from pymongo import MongoClient
+except Exception:
+    MongoClient = None
+
 DATA = Path(__file__).resolve().parent.parent / "data"
 
 PRIORITY_LABEL = {
@@ -121,13 +128,20 @@ class Network:
 
     @classmethod
     def load(cls, path: Path = DATA / "section.json") -> "Network":
-        ensure_db_ready()
-        db_stations = load_stations_from_db()
-        db_blocks = load_blocks_from_db()
-        if db_stations and db_blocks:
-            raw = {"stations": db_stations, "blocks": db_blocks}
+        # Prefer MongoDB if configured
+        mongo = _load_from_mongo()
+        if mongo:
+            stations_list, blocks_list, _ = mongo
+            raw = {"stations": stations_list, "blocks": blocks_list}
+            # ensure types align with previous JSON structure
         else:
-            raw = json.loads(path.read_text())
+            ensure_db_ready()
+            db_stations = load_stations_from_db()
+            db_blocks = load_blocks_from_db()
+            if db_stations and db_blocks:
+                raw = {"stations": db_stations, "blocks": db_blocks}
+            else:
+                raw = json.loads(path.read_text())
         stations = {s["id"]: Station(**s) for s in raw["stations"]}
         blocks = [
             Block(
@@ -169,6 +183,12 @@ class Network:
 
 
 def load_trains(path: Path = DATA / "timetable.json") -> list[Train]:
+    # Prefer MongoDB if configured
+    mongo = _load_from_mongo()
+    if mongo:
+        _, _, trains_list = mongo
+        if trains_list:
+            return [Train(**t) for t in trains_list]
     ensure_db_ready()
     db_trains = load_trains_from_db()
     if db_trains:
@@ -179,3 +199,19 @@ def load_trains(path: Path = DATA / "timetable.json") -> list[Train]:
 
 def load_scenarios(path: Path = DATA / "scenarios.json") -> dict:
     return json.loads(path.read_text())
+
+
+def _load_from_mongo() -> tuple[list[dict], list[dict], list[dict]] | None:
+    """Return (stations, blocks, trains) from MongoDB if MONGODB_URI is set and MongoClient is available."""
+    mongo_uri = os.environ.get("MONGODB_URI")
+    if not mongo_uri or MongoClient is None:
+        return None
+    try:
+        client = MongoClient(mongo_uri)
+        db = client.get_default_database()
+        stations = list(db.stations.find({}, {"_id": 0}))
+        blocks = list(db.blocks.find({}, {"_id": 0}))
+        trains = list(db.trains.find({}, {"_id": 0}))
+        return stations, blocks, trains
+    except Exception:
+        return None
