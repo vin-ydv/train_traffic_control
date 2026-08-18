@@ -9,8 +9,30 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    depends_on:
+      - db
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  db:
+    image: postgres:15
+    container_name: railmind-db
+    environment:
+      POSTGRES_USER: railmind
+      POSTGRES_PASSWORD: railmind
+      POSTGRES_DB: railmind
+    ports:
+      - "5432:5432"
+    volumes:
+      - railmind_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  railmind_pgdata:
