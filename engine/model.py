@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from db.models import ensure_db_ready, load_blocks_from_db, load_stations_from_db, load_trains_from_db
+
 DATA = Path(__file__).resolve().parent.parent / "data"
 
 PRIORITY_LABEL = {
@@ -119,7 +121,13 @@ class Network:
 
     @classmethod
     def load(cls, path: Path = DATA / "section.json") -> "Network":
-        raw = json.loads(path.read_text())
+        ensure_db_ready()
+        db_stations = load_stations_from_db()
+        db_blocks = load_blocks_from_db()
+        if db_stations and db_blocks:
+            raw = {"stations": db_stations, "blocks": db_blocks}
+        else:
+            raw = json.loads(path.read_text())
         stations = {s["id"]: Station(**s) for s in raw["stations"]}
         blocks = [
             Block(
@@ -161,6 +169,10 @@ class Network:
 
 
 def load_trains(path: Path = DATA / "timetable.json") -> list[Train]:
+    ensure_db_ready()
+    db_trains = load_trains_from_db()
+    if db_trains:
+        return [Train(**t) for t in db_trains]
     raw = json.loads(path.read_text())
     return [Train(**t) for t in raw["trains"]]
 

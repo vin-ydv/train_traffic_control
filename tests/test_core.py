@@ -67,3 +67,12 @@ def test_ai_confidence_metric():
     rec = sim.current_recommendation()
     if rec is not None:
         assert 0 <= rec["confidence"] <= 100
+
+
+def test_sqlite_seed_is_populated():
+    from db.models import DB_PATH, init_db, load_stations_from_db, load_trains_from_db
+
+    init_db()
+    assert DB_PATH.exists()
+    assert len(load_stations_from_db()) > 0
+    assert len(load_trains_from_db()) > 0
