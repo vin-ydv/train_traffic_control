@@ -62,6 +62,16 @@ RailMind now includes a stronger dispatch policy and a clearer control-room expl
 - Plain-English rationale: each recommendation explains why the selected train is released and who else is held.
 - Forecast window: the app now lists the next likely dispatch interventions in the upcoming 10–20 minute horizon.
 - External feed-ready architecture: disruptions can be posted through the FastAPI ingest gateway and appear immediately in the control-room simulation.
+- Confidence scoring: each recommendation includes an AI confidence percentage so the controller knows how strongly the policy supports the decision.
+
+## Final project suggestions
+
+For a stronger SIH final presentation, I recommend the following polish items:
+
+- Add a short 2-minute demo script for the judges: show a delay event, show the AI recommendation, then explain why it protects passenger-minutes.
+- Keep the “human-in-the-loop” story strong: the controller can accept, reject, or override the recommendation.
+- Emphasize measurable outcomes in the viva: throughput improvement, lower passenger delay, and zero safety violations.
+- If deploying publicly, use a clean hosted version with a single-click demo scenario and a PDF/CSV report export.
 
 ## The 6 screens
 1. **Live map** — trains moving block-by-block; conflict glow; PLAY/PAUSE/STEP.

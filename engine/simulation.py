@@ -399,6 +399,19 @@ class Simulation:
                     return found
         return found
 
+    def decision_confidence(self, contenders: list[Train], chosen: Train) -> float:
+        """Return a 0-100 confidence score for the current release recommendation."""
+        if len(contenders) < 2:
+            return 92.0
+        scores = [self.dispatch_score(t) for t in contenders]
+        chosen_score = self.dispatch_score(chosen)
+        best = max(scores)
+        margin = max(0.0, best - second_best if len(scores) >= 2 else 0.0)
+        second_best = sorted(scores)[-2] if len(scores) >= 2 else 0.0
+        margin = max(0.0, best - second_best)
+        confidence = 55.0 + min(35.0, margin / max(10.0, chosen_score / 10.0)) + (chosen.priority * 2.5)
+        return min(99.0, max(60.0, confidence))
+
     def current_recommendation(self) -> Optional[dict]:
         """Build a human-readable recommendation for the first active conflict."""
         for blk in self.net.blocks:
@@ -420,6 +433,7 @@ class Simulation:
             if not held:
                 continue
             reason = self.release_explanation(chosen, held)
+            confidence = self.decision_confidence(contenders, chosen)
             return {
                 "block": blk.id,
                 "release": chosen.id,
@@ -428,6 +442,7 @@ class Simulation:
                           f"{held[0].at_station}; allow {chosen.number} to enter {blk.id}.",
                 "reason": reason,
                 "impact": f"Estimated gain: {max(4, len(held) * 2)} min of passenger-weighted delay avoided.",
+                "confidence": round(confidence, 1),
             }
         return None
 

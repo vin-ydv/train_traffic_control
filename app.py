@@ -280,6 +280,7 @@ with tab_advice:
             <h3 style='margin:6px 0;'>🟢 {rec['action']}</h3>
             <p><b>Why:</b> {rec['reason']}</p>
             <p class="small"><b>Expected impact:</b> {rec['impact']}</p>
+            <p class="small"><b>AI confidence:</b> {rec['confidence']:.1f}%</p>
             </div>""",
             unsafe_allow_html=True,
         )
@@ -459,6 +460,7 @@ with tab_team:
             <h3 style='margin:6px 0;'>🚦 {rec['action']}</h3>
             <p><b>Why it matters:</b> {rec['reason']}</p>
             <p class="small"><b>Expected effect:</b> {rec['impact']}</p>
+            <p class="small"><b>AI confidence:</b> {rec['confidence']:.1f}%</p>
             </div>""",
             unsafe_allow_html=True,
         )

@@ -60,3 +60,10 @@ def test_what_if_analysis() -> None:
     assert "delay_delta_min" in analysis
     assert isinstance(analysis["summary"], str)
     assert "baseline" in analysis and "candidate" in analysis
+
+
+def test_ai_confidence_metric():
+    sim = Simulation.new("normal", mode="ai")
+    rec = sim.current_recommendation()
+    if rec is not None:
+        assert 0 <= rec["confidence"] <= 100
