@@ -406,7 +406,6 @@ class Simulation:
         scores = [self.dispatch_score(t) for t in contenders]
         chosen_score = self.dispatch_score(chosen)
         best = max(scores)
-        margin = max(0.0, best - second_best if len(scores) >= 2 else 0.0)
         second_best = sorted(scores)[-2] if len(scores) >= 2 else 0.0
         margin = max(0.0, best - second_best)
         confidence = 55.0 + min(35.0, margin / max(10.0, chosen_score / 10.0)) + (chosen.priority * 2.5)
