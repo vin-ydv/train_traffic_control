@@ -211,13 +211,6 @@ with st.sidebar:
     st.caption("SIH 2025 · Problem 25022")
 
 
-# auto-play loop (runs one step per rerun)
-if st.session_state.playing and sim.time < 180:
-    time.sleep(st.session_state.speed)
-    sim.step()
-    st.rerun()
-
-
 # ----------------------------- main tabs -----------------------------
 tab_map, tab_advice, tab_whatif, tab_kpi, tab_team, tab_log = st.tabs(
     ["🗺 Live Map", "🤖 AI Advice", "🔀 What-If", "📊 KPIs", "🧭 Team Ops", "📋 Log & Scenarios"]
@@ -518,3 +511,15 @@ with tab_log:
             "Delay (m)": max(0, sim.time - t.planned_dep),
         })
     st.dataframe(pd.DataFrame(trows), width='stretch')
+
+
+# auto-play loop (runs one step per rerun after rendering all UI elements)
+if st.session_state.playing:
+    if sim.time < 180:
+        time.sleep(st.session_state.speed)
+        sim.step()
+        st.rerun()
+    else:
+        st.session_state.playing = False
+        st.rerun()
+
