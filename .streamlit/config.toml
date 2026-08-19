@@ -1,0 +1,3 @@
+[browser]
+# Disable first-run telemetry prompt and usage stats
+gatherUsageStats = false

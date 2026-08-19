@@ -1,0 +1,14 @@
+{
+  "trains": [
+    {"id": "T1",  "number": "12956", "name": "Rajdhani Express",   "direction": "down", "priority": 5, "type": "Rajdhani",   "pax": 1180, "speed": 130, "origin": "NZM", "dest": "AGC", "dep_min": 0,  "dwell_min": 2},
+    {"id": "T2",  "number": "12002", "name": "Shatabdi Express",   "direction": "down", "priority": 5, "type": "Shatabdi",   "pax": 620,  "speed": 130, "origin": "NZM", "dest": "AGC", "dep_min": 18, "dwell_min": 2},
+    {"id": "T3",  "number": "12626", "name": "Kerala SF Express",  "direction": "down", "priority": 4, "type": "Superfast",  "pax": 920,  "speed": 110, "origin": "NZM", "dest": "AGC", "dep_min": 6,  "dwell_min": 3},
+    {"id": "T4",  "number": "19019", "name": "Dehradun Express",   "direction": "down", "priority": 3, "type": "Express",    "pax": 760,  "speed": 90,  "origin": "NZM", "dest": "AGC", "dep_min": 12, "dwell_min": 3},
+    {"id": "T5",  "number": "54322", "name": "Passenger Special",  "direction": "down", "priority": 2, "type": "Passenger",  "pax": 340,  "speed": 70,  "origin": "NZM", "dest": "MTJ", "dep_min": 2,  "dwell_min": 4},
+    {"id": "T6",  "number": "FRTD1", "name": "Freight Rake",       "direction": "down", "priority": 1, "type": "Freight",    "pax": 0,    "speed": 55,  "origin": "NZM", "dest": "AGC", "dep_min": 30, "dwell_min": 5},
+    {"id": "T7",  "number": "12957", "name": "Rajdhani Express",   "direction": "up",   "priority": 5, "type": "Rajdhani",   "pax": 1180, "speed": 130, "origin": "AGC", "dest": "NZM", "dep_min": 8,  "dwell_min": 2},
+    {"id": "T8",  "number": "12625", "name": "Kerala SF Express",  "direction": "up",   "priority": 4, "type": "Superfast",  "pax": 920,  "speed": 110, "origin": "AGC", "dest": "NZM", "dep_min": 22, "dwell_min": 3},
+    {"id": "T9",  "number": "54321", "name": "Passenger Special",  "direction": "up",   "priority": 2, "type": "Passenger",  "pax": 340,  "speed": 70,  "origin": "AGC", "dest": "NZM", "dep_min": 14, "dwell_min": 4},
+    {"id": "T10", "number": "FRTU1", "name": "Freight Rake",       "direction": "up",   "priority": 1, "type": "Freight",    "pax": 0,    "speed": 55,  "origin": "AGC", "dest": "NZM", "dep_min": 40, "dwell_min": 5}
+  ]
+}

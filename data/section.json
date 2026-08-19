@@ -1,0 +1,20 @@
+{
+  "section": "Delhi - Agra (representative demo section)",
+  "stations": [
+    {"id": "NZM",  "name": "Hazrat Nizamuddin", "x": 0,   "y": 0,   "loops": 3},
+    {"id": "FDB",  "name": "Faridabad",         "x": 30,  "y": 6,   "loops": 2},
+    {"id": "PWL",  "name": "Palwal",            "x": 60,  "y": 0,   "loops": 3},
+    {"id": "KSV",  "name": "Kosi Kalan",        "x": 90,  "y": -6,  "loops": 2},
+    {"id": "MTJ",  "name": "Mathura Jn",        "x": 120, "y": 0,   "loops": 4},
+    {"id": "RKM",  "name": "Raja ki Mandi",     "x": 150, "y": 6,   "loops": 2},
+    {"id": "AGC",  "name": "Agra Cantt",        "x": 180, "y": 0,   "loops": 3}
+  ],
+  "blocks": [
+    {"id": "B1", "from": "NZM", "to": "FDB", "length_km": 28, "max_speed": 130, "double_line": true},
+    {"id": "B2", "from": "FDB", "to": "PWL", "length_km": 32, "max_speed": 130, "double_line": true},
+    {"id": "B3", "from": "PWL", "to": "KSV", "length_km": 38, "max_speed": 110, "double_line": false},
+    {"id": "B4", "from": "KSV", "to": "MTJ", "length_km": 42, "max_speed": 110, "double_line": false},
+    {"id": "B5", "from": "MTJ", "to": "RKM", "length_km": 30, "max_speed": 130, "double_line": true},
+    {"id": "B6", "from": "RKM", "to": "AGC", "length_km": 22, "max_speed": 130, "double_line": true}
+  ]
+}

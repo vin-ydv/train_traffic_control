@@ -1,0 +1,17 @@
+with open('ui/theme.py', 'a', encoding='utf-8') as f:
+    f.write('def kpi_card(label: str, value: str, good: bool | None = None, hint: str = "") -> str:\n')
+    f.write('    cls = ""\n')
+    f.write('    if good is True:\n')
+    f.write('        cls = "kpi-value--good"\n')
+    f.write('    elif good is False:\n')
+    f.write('        cls = "kpi-value--bad"\n')
+    f.write('    hint_html = f\'<div class="kpi-hint">{hint}</div>\' if hint else ""\n')
+    f.write('    return (\n')
+    f.write('        f\'<div class="kpi-card">\'\n')
+    f.write('        f\'<div class="kpi-label">{label}</div>\'\n')
+    f.write('        f\'<div class="kpi-value {cls}">{value}</div>\'\n')
+    f.write('        f\'{hint_html}\'\n')
+    f.write('        f\'</div>\'\n')
+    f.write('    )\n\n')
+
+print('Part 2 done')
